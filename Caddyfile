@@ -1,0 +1,11 @@
+{$DOMAIN} {
+	encode gzip
+
+	request_body {
+		max_size 110MB
+	}
+
+	reverse_proxy app:3000 {
+		flush_interval -1
+	}
+}

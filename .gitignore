@@ -1,0 +1,35 @@
+# deps
+/node_modules
+/.pnp
+.pnp.js
+
+# next
+/.next/
+/out/
+/build
+
+# env
+.env*.local
+.env
+
+# misc
+.DS_Store
+*.pem
+/coverage
+
+# python
+pdf-service/__pycache__/
+pdf-service/*.pyc
+pdf-service/.venv/
+pdf-service/spike_output.pdf
+
+# uploads / outputs / tender data (never commit user data)
+uploads/
+outputs/
+data/
+.scratch_*
+*.scratch
+
+
+# prisma
+/prisma/migrations/*.sql

@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs=require\\('fs'\\); const pdf=require\\('pdf-parse'\\); pdf\\(fs.readFileSync\\('TENDER ANALYZER SPEC.pdf'\\)\\).then\\(d=>console.log\\(d.text.slice\\(18000\\)\\)\\).catch\\(e=>console.error\\(e\\)\\)\")",
+      "Bash(type .env)",
+      "Bash(type .env.local)",
+      "PowerShell(cd \"C:\\\\Users\\\\roeew\\\\Sites\\\\tenderim\"; $env:PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION = \"yes\"; npx prisma db push --force-reset 2>&1)",
+      "PowerShell(cd \"C:\\\\Users\\\\roeew\\\\Sites\\\\tenderim\"; $proc = Start-Process -FilePath \"npx\" -ArgumentList \"next\",\"dev\" -PassThru -NoNewWindow; Start-Sleep -Seconds 12; $proc.Kill\\(\\); Write-Host \"Done\")",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npx prisma *)",
+      "Bash(pdf-service/.venv/Scripts/python.exe *)",
+      "Bash(curl -s http://127.0.0.1:8000/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3000/)",
+      "Bash(curl -s -L -o /dev/null -w \"GET /: %{http_code}\\\\nGET /login: \" http://127.0.0.1:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:3000/login)",
+      "Bash(curl -s -L -A \"Mozilla/5.0 \\(compatible; TenderImBot/1.0\\)\" -H \"Accept-Language: he,en;q=0.8\" \"https://mr.gov.il/ilgstorefront/he/p/4000613830\" -o /tmp/mr_page.html)",
+      "Read(//tmp/**)",
+      "Bash(node *)",
+      "Bash(curl -s -L -A \"Mozilla/5.0 \\(compatible; TenderImBot/1.0\\)\" \"https://mr.gov.il/ilgstorefront/he/p/4000613830\" -o \"C:/Users/roeew/Sites/tenderim/.scratch_mr.html\")",
+      "Bash(curl -sI -A \"Mozilla/5.0\" -L \"https://mr.gov.il/ilgstorefront/he/p/attachment/005056BF65EB1FD18DE1D0F52CEAC158/חוברת המכרז\")",
+      "Bash(curl -s -I -A \"Mozilla/5.0\" -L \"https://mr.gov.il/ilgstorefront/he/p/attachment/005056BF65EB1FD18DE1D0F52CEAC158/%D7%97%D7%95%D7%91%D7%A8%D7%AA%20%D7%94%D7%9E%D7%9B%D7%A8%D7%96\")",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\" /FO CSV)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-Process *)",
+      "Bash(curl -s -X POST http://127.0.0.1:3000/api/internal/enqueue)",
+      "Bash(curl -s -o /dev/null -w \"/render endpoint: %{http_code}\\\\n\" -X POST http://127.0.0.1:8000/render -H \"Content-Type: application/json\" -d '{\"pdf_base64\":\"\",\"page\":1}')",
+      "Bash(grep -vE \"^\\(prisma:|\\\\\\(node:|.*sslmode|.*libpq|.*To prepare|.*If you want|.*See https|^$\\)\")",
+      "Bash(grep -vE \"^\\(prisma:|\\\\\\(node:|.*sslmode|.*libpq|To prepare|If you want|See https|^$\\)\")",
+      "Bash(nslookup tenderim.viraly-ai.com)"
+    ]
+  }
+}

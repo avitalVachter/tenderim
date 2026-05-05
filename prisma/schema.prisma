@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  tenders      Tender[]
+}
+
+model Tender {
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  publisher        String?
+  tenderNumber     String?
+  deadline         DateTime?
+  ervutAmount      Decimal?
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  submissionMethod String?
+  sourceUrl        String?
+  status           TenderStatus @default(UPLOADED)
+  rawSummary       Json?
+  errorMessage     String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  files            TenderFile[]
+  annexes          Annex[]
+  questions        Question[]
+  answers          Answer[]
+  milestones       Milestone[]
+  jobs             Job[]
+  wizardProgress   WizardProgress?
+}
+
+model TenderFile {
+  id        String   @id @default(cuid())
+  tenderId  String
+  tender    Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  filename  String
+  fileType  String   // "pdf" | "xlsx" | "docx" | "zip"
+  filePath  String   // relative to DATA_DIR
+  pageCount Int?
+  sizeBytes Int?
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Annex {
+  id        String      @id @default(cuid())
+  tenderId  String
+  tender    Tender      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  fileId    String?
+  code      String
+  title     String
+  startPage Int?
+  endPage   Int?
+  status    AnnexStatus @default(PENDING)
+  fields    Field[]
+  createdAt DateTime    @default(now())
+}
+
+model Field {
+  id             String    @id @default(cuid())
+  annexId        String
+  annex          Annex     @relation(fields: [annexId], references: [id], onDelete: Cascade)
+  label          String
+  fieldType      FieldType
+  page           Int
+  bbox           Json      // { x: float, y: float, width: float, height: float } in PDF points
+  required       Boolean   @default(true)
+  maxLength      Int?
+  options        Json?
+  questionId     String?
+  question       Question? @relation(fields: [questionId], references: [id])
+  rawConstraints Json?
+}
+
+model Question {
+  id               String           @id @default(cuid())
+  tenderId         String
+  tender           Tender           @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  category         QuestionCategory
+  label            String
+  helpText         String?
+  fieldType        FieldType
+  required         Boolean          @default(true)
+  options          Json?
+  validation       Json?
+  order            Int
+  appearsInAnnexes Json             // string[] of annex codes
+  fields           Field[]
+  answer           Answer?
+}
+
+model Answer {
+  id            String   @id @default(cuid())
+  tenderId      String
+  tender        Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  questionId    String   @unique
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value         Json
+  aiImproved    Boolean  @default(false)
+  originalValue Json?
+  updatedAt     DateTime @updatedAt
+}
+
+model Milestone {
+  id          String            @id @default(cuid())
+  tenderId    String
+  tender      Tender            @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  date        DateTime
+  category    MilestoneCategory
+  isDeadline  Boolean           @default(false)
+  done        Boolean           @default(false)
+  doneAt      DateTime?
+  order       Int               @default(0)
+}
+
+model Job {
+  id              String    @id @default(cuid())
+  tenderId        String?
+  tender          Tender?   @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  type            String    // "extract" | "generate"
+  status          JobStatus @default(PENDING)
+  progress        Int       @default(0)
+  progressMessage String?
+  result          Json?
+  error           String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model WizardProgress {
+  id          String   @id @default(cuid())
+  tenderId    String   @unique
+  tender      Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  currentStep Int      @default(1)
+  updatedAt   DateTime @updatedAt
+}
+
+enum TenderStatus {
+  UPLOADED
+  EXTRACTING
+  READY
+  FILLING
+  GENERATED
+  ERROR
+}
+
+enum AnnexStatus {
+  PENDING
+  EXTRACTED
+  FILLED
+  HUMAN_ONLY
+}
+
+enum FieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  CURRENCY
+  DATE
+  CHECKBOX
+  RADIO
+  SELECT
+  ID_NUMBER
+  COMPANY_ID
+  PHONE
+  EMAIL
+  ADDRESS
+  SIGNATURE
+  STAMP
+  LAWYER_BLOCK
+}
+
+enum QuestionCategory {
+  COMPANY_INFO
+  SIGNATORY_INFO
+  EXPERIENCE
+  DECLARATIONS
+  NARRATIVE
+  REVIEW
+}
+
+enum MilestoneCategory {
+  DATE
+  DOCUMENT
+  GUARANTEE
+  SIGNATURE
+  PHYSICAL_ACTION
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
