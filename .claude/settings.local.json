@@ -27,7 +27,9 @@
       "Bash(curl -s -o /dev/null -w \"/render endpoint: %{http_code}\\\\n\" -X POST http://127.0.0.1:8000/render -H \"Content-Type: application/json\" -d '{\"pdf_base64\":\"\",\"page\":1}')",
       "Bash(grep -vE \"^\\(prisma:|\\\\\\(node:|.*sslmode|.*libpq|.*To prepare|.*If you want|.*See https|^$\\)\")",
       "Bash(grep -vE \"^\\(prisma:|\\\\\\(node:|.*sslmode|.*libpq|To prepare|If you want|See https|^$\\)\")",
-      "Bash(nslookup tenderim.viraly-ai.com)"
+      "Bash(nslookup tenderim.viraly-ai.com)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ]
   }
 }
