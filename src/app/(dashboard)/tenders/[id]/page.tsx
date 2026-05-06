@@ -97,6 +97,17 @@ export default function TenderPage() {
               {tender.status === 'FILLING' ? 'המשך מילוי' : 'התחל מילוי'}
             </Link>
           )}
+          {/* Pass 4.5 hybrid dedup — quick-start wizard appears as a draft
+              while full extraction continues in the background. */}
+          {tender.status === 'EXTRACTING' && tender._count.questions > 0 && (
+            <Link
+              href={`/tenders/${tender.id}/wizard`}
+              className="bg-primary text-primary-foreground px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-primary/90 transition-colors shrink-0 inline-flex items-center gap-2"
+            >
+              התחל מילוי
+              <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">טיוטה</span>
+            </Link>
+          )}
           {tender.status === 'GENERATED' && (
             <>
               <Link
