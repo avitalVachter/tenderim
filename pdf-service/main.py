@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Literal
@@ -104,7 +104,7 @@ def render_page(req: RenderRequest) -> RenderResponse:
 @app.post("/fill")
 async def fill_pdf(
     file: UploadFile = File(...),
-    request: str = "",  # JSON string of FillRequest, sent as form field
+    request: str = Form(""),  # JSON string of FillRequest, sent as form field
 ) -> Response:
     """
     Overlay text/checkmarks onto a PDF.
@@ -181,7 +181,7 @@ class GenerateAnnexRequest(BaseModel):
 @app.post("/generate-annex")
 async def generate_annex(
     file: UploadFile = File(...),
-    request: str = "",
+    request: str = Form(""),
 ) -> Response:
     """
     Extract page range [start_page..end_page] from source PDF and overlay filled fields.
