@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   name         String?
-  createdAt    DateTime @default(now())
+  // Heartbeat — middleware updates this on every authenticated request.
+  // Used by step-ready email worker to suppress emails when user is active.
+  lastSeenAt   DateTime?
+  createdAt    DateTime  @default(now())
   tenders      Tender[]
 }
 
@@ -33,6 +36,8 @@ model Tender {
   status           TenderStatus @default(UPLOADED)
   rawSummary       Json?
   errorMessage     String?
+  // Used to throttle step-ready emails (90s batch window)
+  lastEmailSentAt  DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   files            TenderFile[]
@@ -105,15 +110,19 @@ model Question {
 }
 
 model Answer {
-  id            String   @id @default(cuid())
-  tenderId      String
-  tender        Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  questionId    String   @unique
-  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  value         Json
-  aiImproved    Boolean  @default(false)
-  originalValue Json?
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  tenderId           String
+  tender             Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  questionId         String   @unique
+  question           Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value              Json
+  aiImproved         Boolean  @default(false)
+  originalValue      Json?
+  // Pattern 3 — within-tender auto-fill on duplicate questions
+  autofillSource     String?  // source Question.id this answer was copied from
+  autofillConfirmed  Boolean  @default(false)
+  autofillConfidence Float?   // 0–1, from Pass 5 dedup
+  updatedAt          DateTime @updatedAt
 }
 
 model Milestone {
@@ -146,11 +155,13 @@ model Job {
 }
 
 model WizardProgress {
-  id          String   @id @default(cuid())
-  tenderId    String   @unique
-  tender      Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  currentStep Int      @default(1)
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  tenderId            String   @unique
+  tender              Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  currentStep         Int      @default(1)
+  // Pattern 3 — counter for autofill state transition (3a explanatory → 3b quiet)
+  autofillsSeenCount  Int      @default(0)
+  updatedAt           DateTime @updatedAt
 }
 
 enum TenderStatus {
@@ -160,6 +171,7 @@ enum TenderStatus {
   FILLING
   GENERATED
   ERROR
+  PARTIAL_ERROR
 }
 
 enum AnnexStatus {

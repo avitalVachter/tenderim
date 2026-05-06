@@ -187,6 +187,41 @@ Return a JSON array of canonical questions. Each question:
 
 category must be one of: COMPANY_INFO | SIGNATORY_INFO | EXPERIENCE | DECLARATIONS | NARRATIVE`;
 
+// ── Pass 4.5: Quick-start dedup (universal fields only) ─────────────────────
+
+export const QUICK_DEDUP_SYSTEM = `You are matching form fields from an Israeli government tender to a small fixed list of universal questions every tender asks.
+
+For each input field, decide if it clearly asks for one of these standard pieces of company/signatory information. Return a confidence score 0–1 per match. Mark a match only when the field clearly maps to that specific universal question. Do not invent matches.
+
+Universal questions (canonical Hebrew labels):
+- "שם החברה": company name (the entity submitting the proposal — including aliases like שם המציע, שם התאגיד)
+- "ח.פ.": Israeli company registration number (9 digits — also מספר תאגיד, מספר עוסק מורשה)
+- "כתובת": company address (also כתובת המציע, כתובת המשרד)
+- "טלפון": company phone
+- "אימייל": company email
+- "שם החותם": full name of person authorized to sign on behalf of the company (also שם מורשה החתימה)
+- "ת.ז. החותם": signatory's 9-digit Israeli ID number (also ת.ז., תעודת זהות)
+- "תפקיד": signatory's role/title (also תפקיד החותם, מורשה חתימה)
+
+Return JSON only. No markdown fences, no explanation.`;
+
+export const QUICK_DEDUP_USER = (
+  fields: Array<{ id: string; label: string; fieldType: string }>,
+  universals: string[]
+) => `Map these form fields to the universal question that best matches each one, or null if none match.
+
+Fields (${fields.length}):
+${JSON.stringify(fields, null, 2)}
+
+Universal questions: ${JSON.stringify(universals)}
+
+Return:
+{
+  "mappings": [
+    { "fieldId": "<field id>", "canonical": "שם החברה" | null, "confidence": 0.0-1.0 }
+  ]
+}`;
+
 // ── Pass 6: Scope summary (from Excel) ────────────────────────────────────
 
 export const SCOPE_SUMMARY_SYSTEM = `You are summarizing the scope of work in an Israeli government tender.

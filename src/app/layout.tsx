@@ -4,7 +4,9 @@ import "./globals.css";
 
 const heebo = Heebo({
   subsets: ["latin", "hebrew"],
+  weight: ["400", "500", "700"],
   variable: "--font-heebo",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

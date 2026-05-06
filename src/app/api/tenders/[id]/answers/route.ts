@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
+import { touchUserLastSeen } from '@/lib/auth-heartbeat';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Heartbeat: any answer-save means user is actively in the wizard
+  void touchUserLastSeen(session.user.id);
 
   const { id: tenderId } = await params;
   const tender = await prisma.tender.findUnique({ where: { id: tenderId } });

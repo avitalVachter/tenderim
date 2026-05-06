@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
+import { touchUserLastSeen } from '@/lib/auth-heartbeat';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const session = await auth();
@@ -16,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ job
   if (!job) return new Response('Not found', { status: 404 });
   if (job.tender?.userId !== session.user.id) return new Response('Forbidden', { status: 403 });
 
+  const userId = session.user.id;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -25,7 +27,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ job
       };
 
       let done = false;
+      let tickCount = 0;
       while (!done) {
+        // Heartbeat — refresh lastSeenAt every ~10 ticks (~15s)
+        if (tickCount % 10 === 0) void touchUserLastSeen(userId);
+        tickCount++;
+
         const current = await prisma.job.findUnique({ where: { id: jobId } });
         if (!current) {
           send({ status: 'FAILED', error: 'Job not found' });

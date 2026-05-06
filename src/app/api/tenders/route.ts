@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
 import { ensureTenderDir, makeRelativePath } from '@/lib/storage';
-import { getBoss, QUEUE_EXTRACT } from '@/lib/queue/boss';
+import { getBoss, QUEUE_EXTRACT, SEND_OPTS_EXTRACT } from '@/lib/queue/boss';
 
 export async function GET() {
   const session = await auth();
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   });
 
   const boss = await getBoss();
-  await boss.send(QUEUE_EXTRACT, { jobId: job.id });
+  await boss.send(QUEUE_EXTRACT, { jobId: job.id }, SEND_OPTS_EXTRACT);
 
   logger.info({ tenderId: tender.id, jobId: job.id, fileId: tenderFile.id }, 'tender uploaded, extraction enqueued');
 

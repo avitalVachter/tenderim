@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { FailureRecovery } from '@/components/tenders/FailureRecovery';
 
 type Annex = { id: string; code: string; title: string; startPage: number | null; endPage: number | null; status: string; _count?: { fields: number } };
 type Milestone = { id: string; title: string; description: string | null; date: string; category: string; isDeadline: boolean; done: boolean };
@@ -115,32 +116,51 @@ export default function TenderPage() {
         </div>
       </header>
 
-      {/* Top info bar */}
-      <div className="bg-card border-b border-border px-6 py-4">
-        <div className="max-w-4xl mx-auto flex flex-wrap gap-6 text-sm">
-          {tender.publisher && (
+      {/* Hero strip — deadline countdown is the heaviest thing on the screen.
+          Per DESIGN_HANDOFF.md "Where to apply this design language next" #2. */}
+      {(tender.status === 'READY' || tender.status === 'FILLING' || tender.status === 'GENERATED' || tender.status === 'PARTIAL_ERROR') && (
+        <div className="bg-white border-b border-slate-200">
+          <div className="max-w-5xl mx-auto px-6 py-7 flex items-end justify-between gap-8 flex-wrap">
             <div>
-              <span className="text-muted-foreground">מפרסם: </span>
-              <span className="font-medium">{tender.publisher}</span>
+              <div className="eyebrow mb-2">מועד הגשה</div>
+              {deadline && daysLeft !== null ? (
+                <>
+                  <div className={`hero-number ${daysLeft <= 2 ? 'text-rose-600' : ''}`}>
+                    {daysLeft <= 0 ? 'עבר המועד' : daysLeft === 1 ? 'מחר' : `${daysLeft} ימים`}
+                  </div>
+                  <div className="text-sm text-slate-500 mt-1.5">
+                    {deadline.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-2xl font-medium text-slate-500">לא צוין</div>
+              )}
             </div>
-          )}
-          {tender.tenderNumber && (
-            <div>
-              <span className="text-muted-foreground">מספר מכרז: </span>
-              <span className="font-medium">{tender.tenderNumber}</span>
+            <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+              {tender.publisher && (
+                <div>
+                  <div className="eyebrow mb-1">מפרסם</div>
+                  <div className="font-medium text-slate-900">{tender.publisher}</div>
+                </div>
+              )}
+              {tender.tenderNumber && (
+                <div>
+                  <div className="eyebrow mb-1">מספר מכרז</div>
+                  <div className="font-medium text-slate-900 tabular-nums">{tender.tenderNumber}</div>
+                </div>
+              )}
+              {tender.ervutAmount && (
+                <div>
+                  <div className="eyebrow mb-1">ערבות הצעה</div>
+                  <div className="font-medium text-slate-900 tabular-nums">
+                    ₪{Number(tender.ervutAmount).toLocaleString('he-IL')}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          {deadline && (
-            <div>
-              <span className="text-muted-foreground">מועד הגשה: </span>
-              <span className={`font-medium ${daysLeft !== null && daysLeft <= 2 ? 'text-destructive' : ''}`}>
-                {deadline.toLocaleDateString('he-IL')}
-                {daysLeft !== null && ` · עוד ${daysLeft} ימים`}
-              </span>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Processing banner */}
       {activeJob && (
@@ -159,47 +179,70 @@ export default function TenderPage() {
       )}
 
       {tender.status === 'ERROR' && (
-        <div className="bg-destructive/10 border-b border-destructive/20 px-6 py-3 text-sm text-destructive">
+        <div className="bg-rose-50 border-b border-rose-600/20 px-6 py-3 text-sm text-rose-600">
           <div className="max-w-4xl mx-auto">
-            שגיאה בעיבוד. פרטים: {tender.jobs[0]?.error ?? 'לא ידוע'}
+            הניתוח נכשל. נסה לייבא מחדש או צור קשר אם הבעיה חוזרת.
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="border-b border-border bg-card">
-        <div className="max-w-4xl mx-auto flex">
-          {(['summary', 'forms', 'timeline'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t === 'summary' ? 'סיכום' : t === 'forms' ? 'טפסים' : 'ציר זמן'}
-            </button>
-          ))}
-        </div>
-      </div>
+      {tender.status === 'PARTIAL_ERROR' ? (
+        <FailureRecovery
+          tenderId={tender.id}
+          progressAtStall={tender.jobs[0]?.progress ?? 0}
+          annexesDone={tender.annexes.filter((a) => a.status === 'EXTRACTED').length}
+          annexesTotal={tender.annexes.length}
+          questionsReady={tender._count.questions}
+          rawFields={tender.annexes.reduce((s, a) => s + (a._count?.fields ?? 0), 0)}
+          failedAnnexes={tender.annexes
+            .filter((a) => a.status === 'PENDING')
+            .map((a) => ({
+              code: a.code,
+              title: a.title,
+              pageCount: a.startPage && a.endPage ? a.endPage - a.startPage + 1 : 0,
+              reason: 'שגיאת זמן תגובה',
+              attempt: 1,
+            }))}
+        />
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="border-b border-border bg-card">
+            <div className="max-w-4xl mx-auto flex">
+              {(['summary', 'forms', 'timeline'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t === 'summary' ? 'סיכום' : t === 'forms' ? 'טפסים' : 'ציר זמן'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {tab === 'summary' && <SummaryTab tender={tender} />}
-        {tab === 'forms' && <FormsTab annexes={tender.annexes} />}
-        {tab === 'timeline' && <TimelineTab milestones={tender.milestones} />}
-      </main>
+          <main className="max-w-4xl mx-auto px-6 py-8">
+            {tab === 'summary' && <SummaryTab tender={tender} />}
+            {tab === 'forms' && <FormsTab annexes={tender.annexes} />}
+            {tab === 'timeline' && <TimelineTab milestones={tender.milestones} />}
+          </main>
+        </>
+      )}
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    UPLOADED: 'bg-muted text-muted-foreground',
-    EXTRACTING: 'bg-blue-100 text-blue-700',
-    READY: 'bg-green-100 text-green-700',
-    FILLING: 'bg-yellow-100 text-yellow-700',
-    GENERATED: 'bg-green-200 text-green-800',
-    ERROR: 'bg-destructive/10 text-destructive',
+    UPLOADED: 'bg-slate-100 text-slate-600',
+    EXTRACTING: 'bg-amber-50 text-amber-700',
+    READY: 'bg-emerald-50 text-emerald-700',
+    FILLING: 'bg-amber-50 text-amber-700',
+    GENERATED: 'bg-emerald-100 text-emerald-800',
+    ERROR: 'bg-rose-50 text-rose-600',
+    PARTIAL_ERROR: 'bg-amber-50 text-amber-700',
   };
   const label: Record<string, string> = {
     UPLOADED: 'ממתין',
@@ -208,6 +251,7 @@ function StatusBadge({ status }: { status: string }) {
     FILLING: 'ממלא',
     GENERATED: 'הושלם',
     ERROR: 'שגיאה',
+    PARTIAL_ERROR: 'הושלם חלקית',
   };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[status] ?? 'bg-muted text-muted-foreground'}`}>

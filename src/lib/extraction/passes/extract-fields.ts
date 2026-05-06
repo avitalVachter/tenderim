@@ -36,7 +36,18 @@ export async function extractFieldsForAnnex(
   const endPage = annex.endPage ?? startPage;
   const totalInAnnex = endPage - startPage + 1;
 
-  // Remove old fields (re-run safe)
+  // Resume-safe: if this annex already finished extraction in a prior run,
+  // skip vision entirely and return the existing field count. Combined with
+  // pg-boss retries, this turns transient failures (DNS, rate-limit) into
+  // ~$0 / <1 min recovery instead of full 25-min re-runs.
+  if (annex.status === 'EXTRACTED') {
+    const existing = await prisma.field.count({ where: { annexId } });
+    logger.info({ annexId, annexCode: annex.code, existing }, 'annex already extracted — skipping');
+    if (onPageDone) await onPageDone(totalInAnnex, totalInAnnex);
+    return existing;
+  }
+
+  // Remove old fields (re-run safe for PENDING annexes that partially extracted)
   await prisma.field.deleteMany({ where: { annexId } });
 
   let totalFields = 0;

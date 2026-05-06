@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Tenderim — Email: שלב מוכן למילוי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --slate-900: #0F172A;
+  --slate-700: #334155;
+  --slate-500: #64748B;
+  --slate-300: #CBD5E1;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+  --slate-50:  #F8FAFC;
+  --white:     #FFFFFF;
+  --stone-50:  #FAFAF9;
+  --amber-500: #F59E0B;
+  --amber-700: #B45309;
+  --amber-50:  #FFFBEB;
+  --emerald-600: #059669;
+  --rose-600:    #E11D48;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Heebo', -apple-system, sans-serif;
+  background: var(--slate-100);
+  color: var(--slate-900);
+  min-height: 100vh;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.email-window {
+  width: 100%;
+  max-width: 640px;
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 0.5px solid var(--slate-200);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+.email-chrome {
+  background: var(--slate-50);
+  padding: 14px 20px;
+  border-bottom: 0.5px solid var(--slate-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--slate-500);
+}
+.email-chrome .from { font-weight: 500; color: var(--slate-700); }
+.email-chrome .time { font-size: 12px; }
+.email-subject {
+  padding: 14px 24px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--slate-900);
+}
+.email-preheader {
+  padding: 4px 24px 14px;
+  font-size: 13px;
+  color: var(--slate-500);
+  border-bottom: 0.5px solid var(--slate-200);
+}
+.email-body {
+  padding: 32px 28px;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--amber-700);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  background: var(--amber-500);
+  border-radius: 50%;
+}
+.headline {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--slate-900);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.subhead {
+  font-size: 14px;
+  color: var(--slate-500);
+  margin-bottom: 28px;
+}
+.body-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--slate-700);
+  margin-bottom: 24px;
+}
+.body-text strong {
+  font-weight: 500;
+  color: var(--slate-900);
+}
+.status-card {
+  background: var(--slate-50);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+}
+.status-card .status-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+  margin-bottom: 14px;
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--slate-200);
+}
+.status-row:last-child { border-bottom: none; }
+.status-row .label {
+  font-size: 14px;
+  color: var(--slate-700);
+}
+.status-row .value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--slate-900);
+}
+.status-row.deadline .value {
+  color: var(--amber-700);
+  font-weight: 700;
+}
+.cta {
+  display: block;
+  text-align: center;
+  background: var(--slate-900);
+  color: var(--white);
+  padding: 15px 24px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 14px;
+  transition: background 0.15s;
+}
+.cta:hover { background: var(--slate-700); }
+.cta-arrow { display: inline-block; margin-right: 6px; font-weight: 400; }
+.subtext {
+  text-align: center;
+  font-size: 12px;
+  color: var(--slate-500);
+  margin-bottom: 32px;
+}
+.footer {
+  border-top: 0.5px solid var(--slate-200);
+  padding-top: 20px;
+  font-size: 12px;
+  color: var(--slate-500);
+  line-height: 1.7;
+}
+.footer .brand {
+  font-weight: 700;
+  color: var(--slate-900);
+  letter-spacing: 0.02em;
+}
+.footer a {
+  color: var(--slate-500);
+  text-decoration: underline;
+}
+.note {
+  max-width: 640px;
+  margin: 16px auto 0;
+  font-size: 12px;
+  color: var(--slate-500);
+  text-align: center;
+  font-family: 'Heebo', sans-serif;
+}
+</style>
+</head>
+<body>
+
+<div>
+<div class="email-window">
+
+  <div class="email-chrome">
+    <div class="from">Tenderim &lt;noreply@tenderim.co.il&gt;</div>
+    <div class="time">היום, 15:42</div>
+  </div>
+
+  <div class="email-subject">שלב 2 מוכן למילוי — מכרז 29/2026</div>
+  <div class="email-preheader">גילינו 8 שאלות חדשות לשלב פרטי המורשה לחתימה</div>
+
+  <div class="email-body">
+
+    <div class="eyebrow">
+      <span class="dot"></span>
+      TENDERIM · ניתוח מכרז
+    </div>
+
+    <h1 class="headline">שלב 2 מוכן למילוי</h1>
+    <div class="subhead">מכרז 29/2026 · משטרת ישראל · תחזוקת מבני משטרה צפון</div>
+
+    <p class="body-text">
+      שלום אביטל,<br><br>
+      סיימנו לנתח את שלב <strong>פרטי המורשה לחתימה</strong>. זוהו 8 שאלות חדשות שצריך למלא, חלקן מופיעות במספר נספחים — נמלא אותן עבורך אוטומטית בכל מקום שבו הן חוזרות.
+    </p>
+
+    <div class="status-card">
+      <div class="status-title">סטטוס המכרז</div>
+      <div class="status-row">
+        <span class="label">שלבים מוכנים</span>
+        <span class="value">2 מתוך 6</span>
+      </div>
+      <div class="status-row">
+        <span class="label">שאלות מוכנות בסך הכל</span>
+        <span class="value">19</span>
+      </div>
+      <div class="status-row deadline">
+        <span class="label">מועד הגשה</span>
+        <span class="value">17/05 · עוד 12 ימים</span>
+      </div>
+    </div>
+
+    <a href="#" class="cta">המשך מילוי השאלון <span class="cta-arrow">←</span></a>
+    <div class="subtext">שלבים 3–6 ינותחו ברקע ותקבל אימייל נוסף כשיהיו מוכנים.</div>
+
+    <div class="footer">
+      <span class="brand">TENDERIM</span> · ניתוח אוטומטי של מכרזים ממשלתיים<br>
+      מקבל יותר מדי אימיילים? אפשר <a href="#">לבטל את ההתראות</a> או לעדכן תדירות בהגדרות החשבון.
+    </div>
+
+  </div>
+</div>
+
+<div class="note">Mockup 01 · Pattern 1: per-step ready-to-fill email · Tenderim Design Handoff</div>
+</div>
+
+</body>
+</html>

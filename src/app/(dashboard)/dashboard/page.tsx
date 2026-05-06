@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { redirect } from 'next/navigation';
 import { TenderCard } from '@/components/dashboard/TenderCard';
+import { TenderTable } from '@/components/dashboard/TenderTable';
 import { UploadModal } from '@/components/dashboard/UploadModal';
 import { DeadlineAlerts } from '@/components/dashboard/DeadlineAlerts';
 
@@ -11,9 +12,10 @@ export default async function DashboardPage() {
 
   const tenders = await prisma.tender.findMany({
     where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { updatedAt: 'desc' },
     include: {
       files: { select: { filename: true } },
+      _count: { select: { questions: true, answers: true } },
     },
   });
 
@@ -37,11 +39,18 @@ export default async function DashboardPage() {
             <p className="text-sm">העלה קובץ PDF של מכרז כדי להתחיל</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tenders.map((tender) => (
-              <TenderCard key={tender.id} tender={{ ...tender, deadline: tender.deadline }} />
-            ))}
-          </div>
+          <>
+            {/* Desktop: zebra-striped table per design handoff */}
+            <div className="hidden sm:block">
+              <TenderTable tenders={tenders} />
+            </div>
+            {/* Mobile: keep card grid */}
+            <div className="grid gap-4 sm:hidden">
+              {tenders.map((tender) => (
+                <TenderCard key={tender.id} tender={{ ...tender, deadline: tender.deadline }} />
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>

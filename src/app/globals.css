@@ -4,26 +4,52 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* shadcn semantic tokens repointed to the design-handoff palette
+       (slate, stone, amber, emerald), HSL-encoded for shadcn compatibility.
+       Tailwind default scales (slate, stone, amber, emerald, rose, sky)
+       resolve to the exact hex values as the handoff, so utilities like
+       bg-slate-900 work without extending the theme. */
+
+    /* Page background — warm white (stone-50 #FAFAF9) */
+    --background: 60 9% 98%;
+    /* Primary text — slate-900 #0F172A */
+    --foreground: 222 47% 11%;
+
+    /* Primary content cards — pure white */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-border: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary CTA — slate-900 (handoff: dark CTA is the visual anchor) */
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary / recessive surfaces — slate-50 #F8FAFC */
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 215 25% 27%;
+
+    /* Muted text — slate-500 #64748B */
+    --muted: 210 40% 98%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Brand accent — amber-500 #F59E0B (use sparingly) */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive — rose-600 #E11D48 */
+    --destructive: 347 77% 50%;
+    --destructive-border: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Card borders — slate-200 #E2E8F0 */
+    --border: 214 32% 91%;
+    /* Input borders — slate-300 #CBD5E1 */
+    --input: 213 27% 84%;
+    /* Focus ring — slate-900 */
+    --ring: 222 47% 11%;
+
     --radius: 0.5rem;
   }
 
@@ -34,5 +60,33 @@
   body {
     @apply bg-background text-foreground font-sans;
     direction: rtl;
+    font-feature-settings: "kern", "liga", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hierarchy defaults per handoff — three weights visible per screen */
+  h1 { @apply text-[22px] font-medium leading-tight text-slate-900; }
+  h2 { @apply text-lg font-medium leading-snug text-slate-900; }
+  h3 { @apply text-base font-medium leading-snug text-slate-700; }
+  p, body { @apply text-[15px] font-normal; }
+}
+
+@layer components {
+  /* Right-edge RTL accent bars (3px). Apply to cards in non-default states. */
+  .accent-r-amber   { @apply border-r-[3px] border-amber-500; }
+  .accent-r-emerald { @apply border-r-[3px] border-emerald-600; }
+  .accent-r-rose    { @apply border-r-[3px] border-rose-600; }
+  .accent-r-slate   { @apply border-r-[3px] border-slate-900; }
+  .accent-r-sky     { @apply border-r-[3px] border-sky-700; }
+
+  /* Eyebrow — small uppercase letter-spaced label above headlines */
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500;
+  }
+
+  /* Hero number — used for the deadline countdown, ערבות amount, key metrics */
+  .hero-number {
+    @apply text-[32px] font-bold leading-none text-slate-900 tabular-nums;
   }
 }

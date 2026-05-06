@@ -9,6 +9,7 @@ import { extractMetadata } from './passes/metadata';
 import { extractFieldsForAnnex } from './passes/extract-fields';
 import { deduplicateFields } from './passes/dedup';
 import { isPdfServiceAvailable } from '@/lib/pdf/render';
+import { getBoss, QUEUE_QUICK_DEDUP, SEND_OPTS_QUICK_DEDUP } from '@/lib/queue/boss';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buf: Buffer, opts?: unknown) => Promise<{ text: string; numpages: number }>;
@@ -185,6 +186,8 @@ export async function runExtractionPipeline(jobId: string): Promise<void> {
       });
 
       let totalFieldsExtracted = 0;
+      let quickDedupEnqueued = false;
+
       for (let i = 0; i < annexes.length; i++) {
         const annex = annexes[i];
         const annexBasePct = 45 + Math.round((i / annexes.length) * 40);
@@ -207,6 +210,21 @@ export async function runExtractionPipeline(jobId: string): Promise<void> {
             }
           );
           totalFieldsExtracted += count;
+
+          // Pass 4.5 — fire quick-start dedup after the FIRST annex completes
+          // and has fields. Runs as a separate pg-boss job so Pass 4 keeps
+          // going. Idempotent against canonical labels, so it's safe even
+          // if the worker restarts and the pipeline re-enqueues.
+          if (!quickDedupEnqueued && count > 0) {
+            try {
+              const boss = await getBoss();
+              await boss.send(QUEUE_QUICK_DEDUP, { tenderId }, SEND_OPTS_QUICK_DEDUP);
+              quickDedupEnqueued = true;
+              logger.info({ tenderId, afterAnnex: annex.code }, 'pass 4.5: quick-dedup enqueued');
+            } catch (qErr) {
+              logger.warn({ tenderId, err: qErr }, 'failed to enqueue quick-dedup, continuing');
+            }
+          }
         } catch (err) {
           logger.warn({ annexId: annex.id, annexCode: annex.code, err }, 'field extraction failed for annex, continuing');
         }
@@ -224,10 +242,19 @@ export async function runExtractionPipeline(jobId: string): Promise<void> {
     }
 
     // ── Done ───────────────────────────────────────────────────────────────
-    await updateJobProgress(jobId, 100, 'ניתוח הושלם');
-
     const finalAnnexCount = await prisma.annex.count({ where: { tenderId } });
     const finalQuestionCount = await prisma.question.count({ where: { tenderId } });
+    const finalFieldCount = await prisma.field.count({ where: { annex: { tenderId } } });
+
+    // State validation: if pass 4 produced fields but pass 5 produced zero
+    // questions, something silently broke (e.g. dedup Claude call returned
+    // empty). Don't mark DONE — fail with an actionable error so the next
+    // run can resume from EXTRACTED annexes and just retry pass 5.
+    if (finalFieldCount > 0 && finalQuestionCount === 0) {
+      throw new Error('חולצו שדות אך לא נוצרו שאלות — נדרשת הרצה חוזרת של pass 5');
+    }
+
+    await updateJobProgress(jobId, 100, 'ניתוח הושלם');
 
     await prisma.job.update({
       where: { id: jobId },
@@ -238,6 +265,7 @@ export async function runExtractionPipeline(jobId: string): Promise<void> {
           annexCount: finalAnnexCount,
           milestoneCount: metadata.milestones.length,
           questionCount: finalQuestionCount,
+          fieldCount: finalFieldCount,
         },
       },
     });
@@ -252,13 +280,21 @@ export async function runExtractionPipeline(jobId: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ tenderId, jobId, error: message }, 'extraction pipeline failed');
 
+    // If at least one annex extracted successfully before failure, use
+    // PARTIAL_ERROR — UI shows the failure-recovery panel with continue/retry.
+    // Otherwise it's a hard failure (couldn't even segment the PDF).
+    const extractedAnnexCount = await prisma.annex.count({
+      where: { tenderId, status: 'EXTRACTED' },
+    });
+    const tenderStatus = extractedAnnexCount > 0 ? 'PARTIAL_ERROR' : 'ERROR';
+
     await prisma.job.update({
       where: { id: jobId },
       data: { status: 'FAILED', error: message, finishedAt: new Date() },
     });
     await prisma.tender.update({
       where: { id: tenderId },
-      data: { status: 'ERROR', errorMessage: message },
+      data: { status: tenderStatus, errorMessage: message },
     });
 
     throw error;

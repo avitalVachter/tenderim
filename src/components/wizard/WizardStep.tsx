@@ -4,6 +4,19 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { QuestionInput } from './QuestionInput';
+import { AutofillBanner3a, AutofillBadge3b, AutofillConfirm3c } from './AutofillBanner';
+import { ContextSidebar } from './ContextSidebar';
+
+type Answer = {
+  value: unknown;
+  aiImproved: boolean;
+  originalValue: unknown;
+  autofillSource: string | null;
+  autofillConfirmed: boolean;
+  autofillConfidence: number | null;
+  autofillSourceLabel: string | null;
+  autofillSourceStep: number | null;
+};
 
 type Question = {
   id: string;
@@ -13,7 +26,8 @@ type Question = {
   required: boolean;
   options: unknown;
   category: string;
-  answer: { value: unknown; aiImproved: boolean; originalValue: unknown } | null;
+  appearsInAnnexes?: string[];
+  answer: Answer | null;
 };
 
 type WizardStepProps = {
@@ -24,7 +38,10 @@ type WizardStepProps = {
   questions: Question[];
   isReview: boolean;
   isNarrative: boolean;
+  autofillsSeenCount: number;
 };
+
+type AutofillState = '3a' | '3b' | '3c' | 'none';
 
 const STEP_LABELS: Record<number, string> = {
   1: 'פרטי החברה',
@@ -59,6 +76,7 @@ export function WizardStep({
   questions,
   isReview,
   isNarrative,
+  autofillsSeenCount,
 }: WizardStepProps) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
@@ -84,6 +102,28 @@ export function WizardStep({
   const [generating, setGenerating] = useState(false);
   const [navError, setNavError] = useState<string | null>(null);
   const debounceRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Pattern 3 — autofill local state
+  // Track confirmed-now (was 3c, user clicked "כן" — render as 3b for rest of page view)
+  // and rejected-now (was 3c, user clicked "לא" — render input empty, no source attribution)
+  const [confirmedAutofills, setConfirmedAutofills] = useState<Set<string>>(new Set());
+  const [rejectedAutofills, setRejectedAutofills] = useState<Set<string>>(new Set());
+
+  // For 3c, the input must render empty until the user confirms.
+  // Override the answers initializer for unconfirmed autofills.
+  useEffect(() => {
+    setAnswers((prev) => {
+      const next = { ...prev };
+      for (const q of questions) {
+        if (q.answer?.autofillSource && !q.answer.autofillConfirmed) {
+          // Don't pre-fill the input for low-confidence autofills
+          next[q.id] = '';
+        }
+      }
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const saveAnswer = useCallback(
     async (questionId: string, value: string) => {
@@ -218,6 +258,94 @@ export function WizardStep({
     saveAnswer(questionId, orig);
   };
 
+  // Compute autofill state per question, in render order, so 3a slots
+  // are filled by the FIRST eligible questions on the page.
+  const allowed3a = Math.max(0, 2 - autofillsSeenCount);
+  const autofillStates = (() => {
+    const map = new Map<string, AutofillState>();
+    let confirmedIdx = 0;
+    for (const q of questions) {
+      const a = q.answer;
+      if (!a || !a.autofillSource) {
+        map.set(q.id, 'none');
+        continue;
+      }
+      if (rejectedAutofills.has(q.id)) {
+        map.set(q.id, 'none');
+        continue;
+      }
+      const isConfirmed = a.autofillConfirmed || confirmedAutofills.has(q.id);
+      if (!isConfirmed) {
+        map.set(q.id, '3c');
+        continue;
+      }
+      // High-confidence (or now-confirmed): 3a for first `allowed3a`, then 3b
+      map.set(q.id, confirmedIdx < allowed3a ? '3a' : '3b');
+      confirmedIdx++;
+    }
+    return map;
+  })();
+
+  const visible3aCount = [...autofillStates.values()].filter((s) => s === '3a').length;
+
+  // After mount, if any 3a banners were shown on this page view, bump the
+  // tender-wide counter so subsequent page loads render those autofills as 3b.
+  useEffect(() => {
+    if (visible3aCount > 0) {
+      fetch(`/api/wizard/${tenderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autofillsSeenIncrement: visible3aCount }),
+      }).catch(() => {
+        /* non-critical */
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAutofillConfirm = useCallback(
+    async (questionId: string, value: string) => {
+      setConfirmedAutofills((prev) => new Set(prev).add(questionId));
+      setAnswers((prev) => ({ ...prev, [questionId]: value }));
+      try {
+        await fetch(`/api/tenders/${tenderId}/autofill`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionId, action: 'confirm' }),
+        });
+      } catch {
+        /* non-critical; the answer is still in DB from Pass 5 */
+      }
+    },
+    [tenderId]
+  );
+
+  const handleAutofillReject = useCallback(
+    async (questionId: string) => {
+      setRejectedAutofills((prev) => new Set(prev).add(questionId));
+      setAnswers((prev) => ({ ...prev, [questionId]: '' }));
+      try {
+        await fetch(`/api/tenders/${tenderId}/autofill`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionId, action: 'reject' }),
+        });
+      } catch {
+        /* non-critical */
+      }
+    },
+    [tenderId]
+  );
+
+  // "שנה" on 3a — clear the field so user can edit.
+  // (The autofillConfirmed=true stays in DB; if they re-fill, it overwrites.)
+  const handleAutofillChange = useCallback(
+    (questionId: string) => {
+      setAnswers((prev) => ({ ...prev, [questionId]: '' }));
+    },
+    []
+  );
+
   const handleGenerate = async () => {
     setGenerating(true);
     setNavError(null);
@@ -280,7 +408,9 @@ export function WizardStep({
         </div>
       </div>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-[1100px] mx-auto px-6 py-8 flex gap-6">
+        {!isReview && <ContextSidebar questions={questions} />}
+        <div className="flex-1 min-w-0 max-w-[720px]">
         {isReview ? (
           <ReviewView
             questions={questions}
@@ -295,52 +425,93 @@ export function WizardStep({
             אין שאלות בשלב זה. ניתן להמשיך לשלב הבא.
           </p>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {questions.map((q) => {
               const isAiImproved = !!originals[q.id];
+              const autofillState = autofillStates.get(q.id) ?? 'none';
+              const a = q.answer;
+
+              // Card chrome — Pattern 3 background + accent bar
+              const cardClass =
+                autofillState === '3a'
+                  ? 'relative bg-emerald-50/40 border border-emerald-200 accent-r-emerald rounded-xl p-5 overflow-hidden'
+                  : autofillState === '3c'
+                  ? 'relative bg-amber-50 border border-amber-500 accent-r-amber rounded-xl p-5 overflow-hidden'
+                  : 'relative bg-card border border-border rounded-xl p-5 overflow-hidden';
+
               return (
-                <div key={q.id} className="bg-card border border-border rounded-lg p-5">
-                  <div className="flex items-start justify-end gap-3 mb-3 min-h-[20px]">
+                <div key={q.id} className={cardClass}>
+                  <div className="flex items-start justify-end gap-2 mb-3 min-h-[20px] flex-wrap">
                     {savingIds.has(q.id) && <span className="text-xs text-muted-foreground">שומר...</span>}
                     {!savingIds.has(q.id) && savedIds.has(q.id) && (
-                      <span className="text-xs text-green-600">✓ נשמר</span>
+                      <span className="text-xs text-emerald-600">✓ נשמר</span>
+                    )}
+                    {autofillState === '3b' && a?.autofillSourceLabel && a.autofillSourceStep != null && (
+                      <AutofillBadge3b
+                        sourceLabel={a.autofillSourceLabel}
+                        sourceStep={a.autofillSourceStep}
+                      />
                     )}
                     {isAiImproved && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">שופר ע״י AI</span>
+                      <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded font-medium">
+                        שופר ע״י AI
+                      </span>
                     )}
                   </div>
-                  <QuestionInput
-                    questionId={q.id}
-                    label={q.label}
-                    helpText={q.helpText}
-                    fieldType={q.fieldType}
-                    required={q.required}
-                    options={q.options}
-                    value={answers[q.id] ?? ''}
-                    onChange={(v) => handleChange(q.id, v)}
-                    disabled={improvingId === q.id}
-                  />
-                  {isNarrative && (q.fieldType === 'LONG_TEXT' || q.fieldType === 'SHORT_TEXT') && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleImprove(q.id)}
-                        disabled={improvingId === q.id || !(answers[q.id] ?? '').trim()}
-                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        {improvingId === q.id ? 'משפר...' : '✨ שפר עם AI'}
-                      </button>
-                      {isAiImproved && (
-                        <button
-                          type="button"
-                          onClick={() => handleRevert(q.id)}
-                          disabled={improvingId === q.id}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          ↩ החזר טקסט מקורי
-                        </button>
+
+                  {/* Pattern 3c — confirmation required, no input shown */}
+                  {autofillState === '3c' && a?.autofillSourceLabel ? (
+                    <AutofillConfirm3c
+                      sourceLabel={a.autofillSourceLabel}
+                      pendingValue={valueToString(a.value)}
+                      onConfirm={() => handleAutofillConfirm(q.id, valueToString(a.value))}
+                      onReject={() => handleAutofillReject(q.id)}
+                    />
+                  ) : (
+                    <>
+                      <QuestionInput
+                        questionId={q.id}
+                        label={q.label}
+                        helpText={q.helpText}
+                        fieldType={q.fieldType}
+                        required={q.required}
+                        options={q.options}
+                        value={answers[q.id] ?? ''}
+                        onChange={(v) => handleChange(q.id, v)}
+                        disabled={improvingId === q.id}
+                      />
+
+                      {autofillState === '3a' && a?.autofillSourceLabel && a.autofillSourceStep != null && (
+                        <AutofillBanner3a
+                          sourceLabel={a.autofillSourceLabel}
+                          sourceStep={a.autofillSourceStep}
+                          onChange={() => handleAutofillChange(q.id)}
+                        />
                       )}
-                    </div>
+
+                      {isNarrative && (q.fieldType === 'LONG_TEXT' || q.fieldType === 'SHORT_TEXT') && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleImprove(q.id)}
+                            disabled={improvingId === q.id || !(answers[q.id] ?? '').trim()}
+                            className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                          >
+                            {improvingId === q.id ? 'משפר...' : '✨ שפר עם AI'}
+                          </button>
+                          {isAiImproved && (
+                            <button
+                              type="button"
+                              onClick={() => handleRevert(q.id)}
+                              disabled={improvingId === q.id}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              ↩ החזר טקסט מקורי
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
@@ -380,6 +551,7 @@ export function WizardStep({
               הבא ←
             </button>
           )}
+        </div>
         </div>
       </main>
     </div>

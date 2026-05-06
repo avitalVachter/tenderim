@@ -8,15 +8,17 @@ const STATUS_LABEL: Record<TenderStatus, string> = {
   FILLING: 'ממלא מסמכים...',
   GENERATED: 'הושלם',
   ERROR: 'שגיאה',
+  PARTIAL_ERROR: 'הושלם חלקית',
 };
 
 const STATUS_COLOR: Record<TenderStatus, string> = {
-  UPLOADED: 'bg-muted text-muted-foreground',
-  EXTRACTING: 'bg-blue-100 text-blue-700',
-  READY: 'bg-green-100 text-green-700',
-  FILLING: 'bg-yellow-100 text-yellow-700',
-  GENERATED: 'bg-green-200 text-green-800',
-  ERROR: 'bg-destructive/10 text-destructive',
+  UPLOADED: 'bg-slate-100 text-slate-600',
+  EXTRACTING: 'bg-amber-50 text-amber-700',
+  READY: 'bg-emerald-50 text-emerald-700',
+  FILLING: 'bg-amber-50 text-amber-700',
+  GENERATED: 'bg-emerald-100 text-emerald-800',
+  ERROR: 'bg-rose-50 text-rose-600',
+  PARTIAL_ERROR: 'bg-amber-50 text-amber-700',
 };
 
 interface Props {

@@ -12,6 +12,15 @@ const STEP_CATEGORY: Record<number, QuestionCategory> = {
   5: 'NARRATIVE',
 };
 
+const CATEGORY_STEP: Record<QuestionCategory, number> = {
+  COMPANY_INFO: 1,
+  SIGNATORY_INFO: 2,
+  EXPERIENCE: 3,
+  DECLARATIONS: 4,
+  NARRATIVE: 5,
+  REVIEW: 6,
+};
+
 const TOTAL_STEPS = 6;
 
 export default async function WizardStepPage({
@@ -33,41 +42,50 @@ export default async function WizardStepPage({
   if (!tender || tender.userId !== session.user.id) notFound();
 
   const isReview = step === TOTAL_STEPS;
+  const wizardProgress = await prisma.wizardProgress.findUnique({ where: { tenderId } });
 
-  if (isReview) {
-    // Fetch all questions + answers for review
-    const questions = await prisma.question.findMany({
-      where: { tenderId },
-      orderBy: { order: 'asc' },
-      include: { answer: true },
-    });
-    return (
-      <WizardStep
-        tenderId={tenderId}
-        tenderTitle={tender.title}
-        step={step}
-        totalSteps={TOTAL_STEPS}
-        questions={questions.map((q) => ({
-          id: q.id,
-          label: q.label,
-          helpText: q.helpText,
-          fieldType: q.fieldType,
-          required: q.required,
-          options: q.options,
-          category: q.category,
-          answer: q.answer ? { value: q.answer.value, aiImproved: q.answer.aiImproved, originalValue: q.answer.originalValue } : null,
-        }))}
-        isReview
-        isNarrative={false}
-      />
-    );
-  }
-
-  const category = STEP_CATEGORY[step];
-  const questions = await prisma.question.findMany({
-    where: { tenderId, category },
+  const questionsRaw = await prisma.question.findMany({
+    where: isReview ? { tenderId } : { tenderId, category: STEP_CATEGORY[step] },
     orderBy: { order: 'asc' },
     include: { answer: true },
+  });
+
+  // Fetch source-question labels for any autofilled answers (one query, batch)
+  const sourceIds = questionsRaw
+    .map((q) => q.answer?.autofillSource)
+    .filter((s): s is string => !!s);
+  const sourceQuestions = sourceIds.length
+    ? await prisma.question.findMany({
+        where: { id: { in: sourceIds } },
+        select: { id: true, label: true, category: true },
+      })
+    : [];
+  const sourceMap = new Map(sourceQuestions.map((s) => [s.id, s]));
+
+  const questions = questionsRaw.map((q) => {
+    const sourceInfo = q.answer?.autofillSource ? sourceMap.get(q.answer.autofillSource) ?? null : null;
+    return {
+      id: q.id,
+      label: q.label,
+      helpText: q.helpText,
+      fieldType: q.fieldType,
+      required: q.required,
+      options: q.options,
+      category: q.category,
+      appearsInAnnexes: (q.appearsInAnnexes as string[]) ?? [],
+      answer: q.answer
+        ? {
+            value: q.answer.value,
+            aiImproved: q.answer.aiImproved,
+            originalValue: q.answer.originalValue,
+            autofillSource: q.answer.autofillSource,
+            autofillConfirmed: q.answer.autofillConfirmed,
+            autofillConfidence: q.answer.autofillConfidence,
+            autofillSourceLabel: sourceInfo?.label ?? null,
+            autofillSourceStep: sourceInfo ? CATEGORY_STEP[sourceInfo.category] : null,
+          }
+        : null,
+    };
   });
 
   return (
@@ -76,18 +94,10 @@ export default async function WizardStepPage({
       tenderTitle={tender.title}
       step={step}
       totalSteps={TOTAL_STEPS}
-      questions={questions.map((q) => ({
-        id: q.id,
-        label: q.label,
-        helpText: q.helpText,
-        fieldType: q.fieldType,
-        required: q.required,
-        options: q.options,
-        category: q.category,
-        answer: q.answer ? { value: q.answer.value, aiImproved: q.answer.aiImproved, originalValue: q.answer.originalValue } : null,
-      }))}
-      isReview={false}
-      isNarrative={step === 5}
+      questions={questions}
+      isReview={isReview}
+      isNarrative={!isReview && step === 5}
+      autofillsSeenCount={wizardProgress?.autofillsSeenCount ?? 0}
     />
   );
 }

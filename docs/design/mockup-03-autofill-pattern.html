@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Tenderim — Auto-fill pattern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --slate-900: #0F172A;
+  --slate-700: #334155;
+  --slate-500: #64748B;
+  --slate-400: #94A3B8;
+  --slate-300: #CBD5E1;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+  --slate-50:  #F8FAFC;
+  --white:     #FFFFFF;
+  --stone-50:  #FAFAF9;
+  --amber-500: #F59E0B;
+  --amber-700: #B45309;
+  --amber-50:  #FFFBEB;
+  --emerald-600: #059669;
+  --emerald-700: #047857;
+  --emerald-50:  #ECFDF5;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Heebo', -apple-system, sans-serif;
+  background: var(--stone-50);
+  color: var(--slate-900);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* App chrome */
+.app-nav {
+  background: var(--white);
+  border-bottom: 0.5px solid var(--slate-200);
+  padding: 14px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--slate-900);
+}
+.brand .accent { color: var(--amber-500); }
+.nav-user { font-size: 13px; color: var(--slate-500); }
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+/* Wizard header */
+.wizard-progress {
+  margin-bottom: 28px;
+}
+.wizard-progress .label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--slate-500);
+  margin-bottom: 8px;
+}
+.wizard-progress .bar-wrap {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.wizard-progress .step {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--slate-200);
+}
+.wizard-progress .step.done { background: var(--emerald-600); }
+.wizard-progress .step.active { background: var(--amber-500); }
+.wizard-progress h2 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--slate-900);
+  letter-spacing: -0.01em;
+}
+.wizard-progress .sub {
+  font-size: 13px;
+  color: var(--slate-500);
+  margin-top: 2px;
+}
+
+/* Demonstration label between cards */
+.demo-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  margin: 28px 0 10px;
+  padding-right: 4px;
+}
+.demo-label:first-of-type { margin-top: 16px; }
+
+/* Field card — base */
+.field-card {
+  background: var(--white);
+  border: 0.5px solid var(--slate-200);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.field-card .accent-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3px;
+}
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--slate-900);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.field-source {
+  font-size: 11px;
+  color: var(--slate-400);
+}
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  padding: 11px 14px;
+  border: 0.5px solid var(--slate-300);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--slate-900);
+  direction: rtl;
+  transition: border 0.15s, background 0.15s;
+}
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--slate-700);
+  box-shadow: 0 0 0 3px var(--slate-100);
+}
+
+/* State 3a — first occurrence (explanatory) */
+.state-explain .accent-bar { background: var(--emerald-600); }
+.state-explain input[type="text"] {
+  background: var(--emerald-50);
+  border-color: var(--emerald-600);
+}
+.explain-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 0.5px dashed var(--slate-200);
+  gap: 12px;
+}
+.explain-msg {
+  font-size: 12px;
+  color: var(--emerald-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.5;
+}
+.explain-msg svg {
+  flex-shrink: 0;
+  color: var(--emerald-600);
+}
+.explain-msg strong { font-weight: 500; }
+.btn-change {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 0.5px solid var(--slate-300);
+  background: var(--white);
+  color: var(--slate-900);
+  cursor: pointer;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.btn-change:hover { background: var(--slate-50); border-color: var(--slate-500); }
+
+/* State 3b — quiet badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--slate-100);
+  color: var(--slate-500);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: help;
+}
+.badge svg {
+  width: 11px;
+  height: 11px;
+  color: var(--emerald-600);
+}
+
+/* State 3c — confirmation required */
+.state-confirm { background: var(--amber-50); border-color: var(--amber-500); }
+.state-confirm .accent-bar { background: var(--amber-500); }
+.state-confirm .field-label { color: var(--amber-700); }
+.state-confirm .field-source { color: var(--amber-700); font-weight: 500; }
+.confirm-question {
+  font-size: 14px;
+  color: var(--slate-700);
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+.confirm-question strong {
+  font-weight: 500;
+  color: var(--slate-900);
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+.confirm-actions .btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 0.5px solid transparent;
+  flex: 1;
+  transition: all 0.15s;
+}
+.btn-yes {
+  background: var(--amber-500);
+  color: var(--white);
+  border-color: var(--amber-500);
+}
+.btn-yes:hover { background: var(--amber-700); border-color: var(--amber-700); }
+.btn-no {
+  background: var(--white);
+  color: var(--slate-900);
+  border-color: var(--slate-300);
+}
+.btn-no:hover { background: var(--slate-50); border-color: var(--slate-500); }
+
+.mockup-tag {
+  text-align: center;
+  font-size: 11px;
+  color: var(--slate-400);
+  margin-top: 40px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<nav class="app-nav">
+  <div class="brand">TENDER<span class="accent">IM</span></div>
+  <div class="nav-user">avital@mly.co.il</div>
+</nav>
+
+<div class="page">
+
+  <div class="wizard-progress">
+    <div class="label">שלב 4 מתוך 6</div>
+    <div class="bar-wrap">
+      <div class="step done"></div>
+      <div class="step done"></div>
+      <div class="step done"></div>
+      <div class="step active"></div>
+      <div class="step"></div>
+      <div class="step"></div>
+    </div>
+    <h2>תצהירים והצהרות</h2>
+    <div class="sub">חלק מהשדות זוהו אוטומטית מתוך תשובות קודמות שלך.</div>
+  </div>
+
+  <!-- State 3a — First occurrence -->
+  <div class="demo-label">פעם ראשונה — מצב הסבר</div>
+  <div class="field-card state-explain">
+    <div class="accent-bar"></div>
+    <div class="field-row">
+      <div class="field-label">שם המציע</div>
+      <div class="field-source">נספח ה׳ · עמוד 89</div>
+    </div>
+    <input type="text" value="מלי שירותי תחזוקה בע״מ">
+    <div class="explain-row">
+      <div class="explain-msg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>מילאנו עבורך מתוך התשובה ל<strong>"שם החברה"</strong> בשלב 1</span>
+      </div>
+      <button class="btn-change">שנה</button>
+    </div>
+  </div>
+
+  <!-- State 3b — Quiet badge -->
+  <div class="demo-label">לאחר 2-3 פעמים — מצב שקט</div>
+  <div class="field-card">
+    <div class="field-row">
+      <div class="field-label">
+        שם התאגיד
+        <span class="badge" title="מולא אוטומטית מתוך 'שם החברה' בשלב 1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          זוהה אוטומטית
+        </span>
+      </div>
+      <div class="field-source">נספח ז׳ · עמוד 134</div>
+    </div>
+    <input type="text" value="מלי שירותי תחזוקה בע״מ">
+  </div>
+
+  <!-- State 3c — Confirmation required -->
+  <div class="demo-label">התאמה בלתי-ודאית — נדרש אישור</div>
+  <div class="field-card state-confirm">
+    <div class="accent-bar"></div>
+    <div class="field-row">
+      <div class="field-label">שם נותן השירות</div>
+      <div class="field-source">נספח ח׳ · נדרש אישור</div>
+    </div>
+    <div class="confirm-question">
+      זיהינו שדה שייתכן שזהה ל<strong>"שם החברה"</strong>. האם למלא אותו עם <strong>"מלי שירותי תחזוקה בע״מ"</strong>?
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-yes">כן, מלא אוטומטית</button>
+      <button class="btn btn-no">לא, אמלא בעצמי</button>
+    </div>
+  </div>
+
+  <div class="mockup-tag">Mockup 03 · Pattern 3: within-tender auto-fill, three states</div>
+
+</div>
+
+</body>
+</html>
