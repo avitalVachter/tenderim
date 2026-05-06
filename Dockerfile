@@ -18,6 +18,11 @@ ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
+# Pre-create the data dir so Docker's anonymous-volume bind picks up these
+# permissions rather than root-only. (Avoids EACCES when the app first writes
+# uploads to /data/tenders/...)
+RUN mkdir -p /data && chown -R nextjs:nodejs /data
+
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
